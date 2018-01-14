@@ -1,5 +1,6 @@
 package com.iota.iri.controllers;
 
+import java.nio.ByteBuffer;
 import java.util.*;
 
 import com.iota.iri.model.*;
@@ -53,6 +54,7 @@ public class TransactionViewModel {
 
     private int[] trits;
     public int weightMagnitude;
+    public ByteBuffer sha256sum;
 
     public static void fillMetadata(final Tangle tangle, TransactionViewModel transactionViewModel) throws Exception {
         if (transactionViewModel.getHash().equals(Hash.NULL_HASH)) { return; }

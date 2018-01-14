@@ -242,25 +242,25 @@ public class Node {
 
                     MessageDigest digest = MessageDigest.getInstance("SHA-256");
                     digest.update(receivedData, 0, TransactionViewModel.SIZE);
-                    ByteBuffer byteHash = ByteBuffer.wrap(digest.digest());
+                    ByteBuffer sha256sum = ByteBuffer.wrap(digest.digest());
 
                     //check if cached
                     synchronized (recentSeenBytes) {
-                        cached = (receivedTransactionHash = recentSeenBytes.get(byteHash)) != null;
+                        cached = (receivedTransactionHash = recentSeenBytes.get(sha256sum)) != null;
                     }
 
                     if (!cached) {
                         //if not, then validate
                         receivedTransactionViewModel = TransactionValidator.validate(receivedData, transactionValidator.getMinWeightMagnitude());
+                        receivedTransactionViewModel.sha256sum = sha256sum;
                         receivedTransactionHash = receivedTransactionViewModel.getHash();
 
                         synchronized (recentSeenBytes) {
-                            recentSeenBytes.put(byteHash, receivedTransactionHash);
+                            recentSeenBytes.put(sha256sum, receivedTransactionHash);
                         }
 
                         //if valid - add to receive queue (receivedTransactionViewModel, neighbor)
                         addReceivedDataToReceiveQueue(receivedTransactionViewModel, neighbor);
-
                     }
 
                 } catch (NoSuchAlgorithmException e) {
@@ -337,18 +337,22 @@ public class Node {
     }
 
     public void addReceivedDataToReceiveQueue(TransactionViewModel receivedTransactionViewModel, Neighbor neighbor) {
-        receiveQueue.add(new ImmutablePair<>(receivedTransactionViewModel, neighbor));
-        if (receiveQueue.size() > RECV_QUEUE_SIZE) {
-            receiveQueue.pollLast();
+        if (receiveQueue.size() > RECV_QUEUE_SIZE) { //space left in the q?
+            synchronized (recentSeenBytes) { //no? lets flush some tail
+                if(receiveQueue.size() > RECV_QUEUE_SIZE - RECV_QUEUE_SIZE / 50)  //only one blocker wins unless the load is high
+                    while(receiveQueue.size() > RECV_QUEUE_SIZE - RECV_QUEUE_SIZE / 25 ) //while the buffer is more than 96% full
+                        recentSeenBytes.remove(receiveQueue.pollLast().getLeft().sha256sum); //drop a tx and sync the cache
+            }
         }
-
+        receiveQueue.add(new ImmutablePair<>(receivedTransactionViewModel, neighbor)); //q potential liveness tx after flush
     }
 
     public void addReceivedDataToReplyQueue(Hash requestedHash, Neighbor neighbor) {
-        replyQueue.add(new ImmutablePair<>(requestedHash, neighbor));
         if (replyQueue.size() > REPLY_QUEUE_SIZE) {
-            replyQueue.pollLast();
+            while(receiveQueue.size() > RECV_QUEUE_SIZE - RECV_QUEUE_SIZE / 50) //free 2% space
+                replyQueue.pollLast();
         }
+        replyQueue.add(new ImmutablePair<>(requestedHash, neighbor)); //q potential liveness tx after flush
     }
 
 
@@ -764,6 +768,11 @@ public class Node {
                 it.remove();
             }
             return this.map.put(key, value);
+        }
+
+        public V remove(K key) {
+            return this.map.remove(key);
+
         }
     }
 
