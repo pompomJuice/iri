@@ -63,6 +63,7 @@ public abstract class Neighbor {
 
     public abstract void send(final DatagramPacket packet);
     public abstract int getPort();
+
     public abstract String connectionType();
     public abstract boolean matches(SocketAddress address);
 

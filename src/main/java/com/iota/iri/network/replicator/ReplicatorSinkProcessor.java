@@ -46,7 +46,8 @@ class ReplicatorSinkProcessor implements Runnable {
         
         try {
             Socket socket;
-            synchronized (neighbor) { 
+            synchronized (neighbor)
+            {
                 Socket sink = neighbor.getSink();
                 if ( sink == null ) {
                     log.info("Opening sink {}", remoteAddress);
@@ -123,7 +124,8 @@ class ReplicatorSinkProcessor implements Runnable {
             String reason = e.getMessage();
             if (reason==null || reason.equals("null")) reason = "closed"; 
             log.error("***** NETWORK ALERT ***** No sink to host {}:{}, reason: {}", remoteAddress, neighbor.getPort(), e.getMessage());
-            synchronized (neighbor) {
+            //synchronized (neighbor)
+                {
                 Socket sourceSocket = neighbor.getSource();
                 if (sourceSocket != null && (sourceSocket.isClosed() || !sourceSocket.isConnected())) {
                     neighbor.setSource(null);

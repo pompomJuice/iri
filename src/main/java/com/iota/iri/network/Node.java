@@ -317,7 +317,10 @@ public class Node {
                     // 3rd parameter false (not tcp), 4th parameter true (configured tethering)
                     final Neighbor newneighbor = newNeighbor(uri, false);
                     if (!getNeighbors().contains(newneighbor)) {
-                        getNeighbors().add(newneighbor);
+                        synchronized (getNeighbors()){
+                            getNeighbors().add(newneighbor);
+                        }
+
                         Neighbor.incNumPeers();
                     }
                 } catch (URISyntaxException e) {
@@ -655,11 +658,19 @@ public class Node {
                     .filter(n -> n.equals(neighbor))
                     .forEach(TCPNeighbor::clear);
         }
-        return neighbors.remove(neighbor);
+        synchronized (neighbors){
+            return neighbors.remove(neighbor);
+        }
+
     }
 
     public boolean addNeighbor(Neighbor neighbor) {
-        return !getNeighbors().contains(neighbor) && getNeighbors().add(neighbor);
+        boolean added = false;
+        synchronized (getNeighbors()) {
+            added = getNeighbors().add(neighbor);
+        }
+
+        return !getNeighbors().contains(neighbor) && added;
     }
 
     public boolean isUriValid(final URI uri) {

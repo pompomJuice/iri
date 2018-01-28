@@ -18,13 +18,14 @@ import java.util.concurrent.TimeUnit;
 public class TCPNeighbor extends Neighbor {
     private static final Logger log = LoggerFactory.getLogger(Neighbor.class);
     private int tcpPort;
+    private int tcpPortOrig;
 
     private final ArrayBlockingQueue<ByteBuffer> sendQueue = new ArrayBlockingQueue<>(10);
     private boolean stopped = false;
 
     public TCPNeighbor(InetSocketAddress address, boolean isConfigured, final double limit) {
         super(address, isConfigured, limit);
-        this.tcpPort = address.getPort();
+        tcpPortOrig = this.tcpPort = address.getPort();
     }
 
     private Socket source = null;
@@ -90,6 +91,11 @@ public class TCPNeighbor extends Neighbor {
         return tcpPort;
     }
 
+    public int getOrigPort()
+    {
+        return tcpPortOrig;
+    }
+
     @Override
     public String connectionType() {
         return "tcp";
@@ -106,10 +112,18 @@ public class TCPNeighbor extends Neighbor {
     @Override
     public boolean matches(SocketAddress address) {
         if (address.toString().contains(this.getHostAddress())) {
+            if( this.getSource() == null )
+            {
+                //log.error("Cannot match {} Source is empty! port = {}, origport={}", address.toString(), getPort(), getOrigPort());
+                return false;
+            }
+
             int port = this.getSource().getPort();
             if (address.toString().contains(Integer.toString(port))) {
+                //log.info("MATCHED socket! {} == {}:{} port={}, origport={}", address, this.getHostAddress(), getSource().getPort(), getPort(), getOrigPort());
                 return true;
             }
+            //log.info("MISSMATCHED socket {} == {}:{} port={}, origport={}", address, this.getHostAddress(), getSource().getPort(), getPort(), getOrigPort());
         }
         return false;
     }
