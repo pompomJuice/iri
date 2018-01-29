@@ -42,7 +42,7 @@ public class ReplicatorSinkPool  implements Runnable {
         {           
             List<Neighbor> neighbors = node.getNeighbors();
             // wait until list is populated
-            int loopcnt = 10;
+            int loopcnt = 100;
             while ((loopcnt-- > 0) && neighbors.size() == 0) {
                 try {
                     Thread.sleep(1000);
@@ -68,6 +68,7 @@ public class ReplicatorSinkPool  implements Runnable {
                     .map(n -> ((TCPNeighbor) n))
                     .filter(n -> n.getSink() == null)
                     .forEach(this::createSink);
+
         }
     }
     
