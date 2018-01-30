@@ -48,7 +48,7 @@ class ReplicatorSinkProcessor implements Runnable {
             Socket socket;
             synchronized (neighbor) { 
                 Socket sink = neighbor.getSink();
-                if ( sink == null ) {
+                if ( sink == null || !sink.isConnected() || sink.isClosed() ) {
                     log.info("Opening sink {}", remoteAddress);
                     socket = new Socket();
                     socket.setSoLinger(true, 0);
@@ -77,45 +77,31 @@ class ReplicatorSinkProcessor implements Runnable {
                     out.write(portAsByteArray);
                     
                     while (!replicatorSinkPool.shutdown && !neighbor.isStopped()) {
-                        try {
-                            ByteBuffer message = neighbor.getNextMessage();
-                            if (neighbor.getSink() != null) { 
-                                if (neighbor.getSink().isClosed() || !neighbor.getSink().isConnected()) {
-                                    log.info("----- NETWORK INFO ----- Sink {} got disconnected", remoteAddress);
-                                    return;
-                                } else {
-                                    if ((message != null) && (neighbor.getSink() != null && neighbor.getSink().isConnected())
-                                        && (neighbor.getSource() != null && neighbor.getSource().isConnected())) {
-                                    
-                                        byte[] bytes = message.array();
+                        ByteBuffer message = neighbor.getNextMessage();
+                        if( message == null )
+                            continue;
 
-                                        if (bytes.length == Node.TRANSACTION_PACKET_SIZE) {
-                                            try {
-                                                CRC32 crc32 = new CRC32();                                        
-                                                crc32.update(message.array());
-                                                String crc32_string = Long.toHexString(crc32.getValue());
-                                                while (crc32_string.length() < CRC32_BYTES) crc32_string = "0"+crc32_string;
-                                                out.write(message.array());
-                                                out.write(crc32_string.getBytes());
-                                                out.flush();
-                                                neighbor.incSentTransactions();
-                                            } catch (IOException e2) {
-                                                if (!neighbor.getSink().isClosed() && neighbor.getSink().isConnected()) {
-                                                    out.close();
-                                                    out = neighbor.getSink().getOutputStream();
-                                                } else {
-                                                    log.info("----- NETWORK INFO ----- Sink {} thread terminating",
-                                                        remoteAddress);
-                                                    return;
-                                                }
-                                            }
-                                        }
-                                    }
+                        byte[] msgBytes = message.array();
+                        if (msgBytes.length == Node.TRANSACTION_PACKET_SIZE) {
+                            try {
+                                CRC32 crc32 = new CRC32();
+                                crc32.update(msgBytes);
+                                String crc32_string = Long.toHexString(crc32.getValue());
+                                while (crc32_string.length() < CRC32_BYTES) crc32_string = "0"+crc32_string;
+                                out.write(msgBytes);
+                                out.write(crc32_string.getBytes());
+                                out.flush();
+                                neighbor.incSentTransactions();
+                            } catch (IOException e2) {
+                                log.info("----- NETWORK INFO ----- Sink {} thread terminating", remoteAddress);
+                                synchronized (neighbor)
+                                {
+                                    if( neighbor.getSink() == socket ) //Is this the old one or a new one?
+                                        neighbor.setSink(null);
                                 }
+                                return;
                             }
-                        } catch (InterruptedException e) {
-                            log.error("Interrupted while waiting for send buffer");
-                        }                        
+                        }
                     }
                 }
             }
