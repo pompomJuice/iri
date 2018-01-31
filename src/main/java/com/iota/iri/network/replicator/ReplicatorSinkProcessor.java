@@ -52,9 +52,9 @@ class ReplicatorSinkProcessor implements Runnable {
                     log.info("Opening sink {}", remoteAddress);
                     socket = new Socket();
                     socket.setSoLinger(true, 0);
-                    socket.setSoTimeout(30000);
+                    socket.setSoTimeout(2000);
                     neighbor.setSink(socket);
-                    socket.connect(new InetSocketAddress(remoteAddress, neighbor.getPort()), 30000);
+                    socket.connect(new InetSocketAddress(remoteAddress, neighbor.getPort()), 2000);
                 }
                 else {
                     // Sink already created
