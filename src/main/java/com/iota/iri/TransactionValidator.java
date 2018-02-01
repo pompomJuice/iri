@@ -31,7 +31,7 @@ public class TransactionValidator {
     private int MIN_WEIGHT_MAGNITUDE = 81;
     private static long MIN_TIMESTAMP = 1517180400;
     private static long MIN_TIMESTAMP_MS = MIN_TIMESTAMP * 1000;
-    private static long MAX_TIMESTAMP_FUTURE = 2 * 60 * 60;
+    private static long MAX_TIMESTAMP_FUTURE = 24 * 60 * 60;
     private static long MAX_TIMESTAMP_FUTURE_MS = MAX_TIMESTAMP_FUTURE * 1000;
 
     private Thread newSolidThread;
@@ -86,7 +86,7 @@ public class TransactionValidator {
         transactionViewModel.setMetadata();
         transactionViewModel.setAttachmentData();
         if(hasInvalidTimestamp(transactionViewModel)) {
-            throw new StaleTimestampException("Invalid transaction timestamp.");
+            throw new StaleTimestampException(String.format("Invalid transaction timestamp. (%d, %d)",  transactionViewModel.getTimestamp(), transactionViewModel.getAttachmentTimestamp()));
         }
         for (int i = VALUE_TRINARY_OFFSET + VALUE_USABLE_TRINARY_SIZE; i < VALUE_TRINARY_OFFSET + VALUE_TRINARY_SIZE; i++) {
             if (transactionViewModel.trits()[i] != 0) {
